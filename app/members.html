@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kelola Anggota - Rizz Library</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="toast" class="toast hidden"></div>
+    <div class="layout-dashboard">
+        <aside class="sidebar glass-panel">
+            <div class="brand">
+                <!-- <i class="fa-solid fa-book-journal-whills"></i> -->
+                <h2>Rizz<span>Library</span></h2>
+            </div>
+            <div class="user-info">
+                <div class="avatar"><i class="fa-solid fa-user-astronaut"></i></div>
+                <div>
+                    <h4 id="user-name">Memuat...</h4>
+                    <span id="user-role" class="badge">admin</span>
+                </div>
+            </div>
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i> Dashboard Utama</a>
+                <a href="book.html" class="nav-item"><i class="fa-solid fa-boxes-stacked"></i> Kelola Buku</a>
+                <a href="members.html" class="nav-item active admin-only"><i class="fa-solid fa-users"></i> Kelola
+                    Anggota</a>
+                <a href="fines.html" class="nav-item admin-only"><i class="fa-solid fa-file-invoice-dollar"></i> Kelola
+                    Denda</a>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="btn-logout" class="btn-outline"><i class="fa-solid fa-right-from-bracket"></i>
+                    Keluar</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <h2>Kelola Anggota</h2>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="member-search" placeholder="Cari nama, email, kode...">
+                </div>
+            </header>
+
+            <div class="content-area">
+                <div class="panel active">
+                    <div class="table-container glass-panel mt-20">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Kode Anggota</th>
+                                    <th>Nama</th>
+                                    <th>Email</th>
+                                    <th>Limit Pinjam</th>
+                                    <th>Status</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="member-tbody">
+                                <!-- Members rendered here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Form Member -->
+    <div id="modal-member-form" class="modal hidden">
+        <div class="modal-content glass-panel">
+            <span class="close-modal">&times;</span>
+            <h2>Edit Anggota</h2>
+            <form id="form-member" class="mt-20">
+                <input type="hidden" id="member-id">
+                <div class="form-group">
+                    <label>Batas Peminjaman Maksimal</label>
+                    <input type="number" id="member-limit" min="1" max="10" required>
+                </div>
+                <div class="form-group">
+                    <label>Status Akun</label>
+                    <select id="member-status" required>
+                        <option value="true">Aktif</option>
+                        <option value="false">Nonaktif (Suspend)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary w-full mt-20">Simpan Perubahan</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="../services/api_service.js"></script>
+    <script src="../services/auth_service.js"></script>
+    <script src="../services/member_service.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = AuthService.requireAuth();
+            if (!user) return;
+            if (user.role !== 'admin') {
+                alert('Akses Ditolak. Anda bukan Admin.');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            document.getElementById('user-name').textContent = user.name;
+            document.getElementById('user-role').textContent = user.role;
+
+            document.getElementById('btn-logout').addEventListener('click', AuthService.logout);
+
+            document.querySelectorAll('.close-modal').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    btn.closest('.modal').classList.add('hidden');
+                });
+            });
+
+            document.getElementById('member-search').addEventListener('input', () => {
+                clearTimeout(window.searchTimeout);
+                window.searchTimeout = setTimeout(loadMembers, 500);
+            });
+
+            document.getElementById('form-member').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('member-id').value;
+                const limit = parseInt(document.getElementById('member-limit').value);
+                const isActive = document.getElementById('member-status').value === 'true';
+
+                try {
+                    await MemberService.updateMemberStatus(id, isActive, limit);
+                    showToast('Status anggota berhasil diperbarui', 'success');
+                    document.getElementById('modal-member-form').classList.add('hidden');
+                    loadMembers();
+                } catch (error) {
+                    showToast(error.message, 'error');
+                }
+            });
+
+            loadMembers();
+        });
+
+        function showToast(message, type = 'info') {
+            const toastEl = document.getElementById('toast');
+            toastEl.textContent = message;
+            toastEl.className = `toast show ${type}`;
+            setTimeout(() => toastEl.classList.remove('show'), 3000);
+        }
+
+        async function loadMembers() {
+            try {
+                const search = document.getElementById('member-search').value;
+                let params = { limit: 50 };
+                if (search) params.search = search;
+
+                const res = await MemberService.getMembers(params);
+                const members = res.data.members;
+                const tbody = document.getElementById('member-tbody');
+                tbody.innerHTML = '';
+
+                members.forEach(m => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${m.memberCode}</td>
+                        <td>${m.name}</td>
+                        <td>${m.email}</td>
+                        <td>${m.maxBorrowLimit} Buku</td>
+                        <td>
+                            <span class="badge" style="background: ${m.isActive ? 'var(--success)' : 'var(--danger)'}">
+                                ${m.isActive ? 'Aktif' : 'Nonaktif'}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn-outline btn-edit" data-id="${m._id}" data-limit="${m.maxBorrowLimit}" data-active="${m.isActive}">
+                                <i class="fa-solid fa-pen"></i> Edit
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                document.querySelectorAll('.btn-edit').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const btnEl = e.currentTarget;
+                        document.getElementById('member-id').value = btnEl.getAttribute('data-id');
+                        document.getElementById('member-limit').value = btnEl.getAttribute('data-limit');
+                        document.getElementById('member-status').value = btnEl.getAttribute('data-active');
+                        document.getElementById('modal-member-form').classList.remove('hidden');
+                    });
+                });
+            } catch (error) {
+                showToast('Gagal memuat anggota', 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>

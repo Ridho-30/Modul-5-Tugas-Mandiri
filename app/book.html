@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kelola Buku - Rizz Library</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="toast" class="toast hidden"></div>
+    <div class="layout-dashboard">
+        <aside class="sidebar glass-panel">
+            <div class="brand">
+                <!-- <i class="fa-solid fa-book-journal-whills"></i> -->
+                <h2>Rizz<span>Library</span></h2>
+            </div>
+            <div class="user-info">
+                <div class="avatar"><i class="fa-solid fa-user-astronaut"></i></div>
+                <div>
+                    <h4 id="user-name">Memuat...</h4>
+                    <span id="user-role" class="badge">admin</span>
+                </div>
+            </div>
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i> Dashboard Utama</a>
+                <a href="book.html" class="nav-item active"><i class="fa-solid fa-boxes-stacked"></i> Kelola Buku</a>
+                <a href="members.html" class="nav-item admin-only"><i class="fa-solid fa-users"></i> Kelola Anggota</a>
+                <a href="fines.html" class="nav-item admin-only"><i class="fa-solid fa-file-invoice-dollar"></i> Kelola
+                    Denda</a>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="btn-logout" class="btn-outline"><i class="fa-solid fa-right-from-bracket"></i>
+                    Keluar</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <h2>Kelola Buku</h2>
+            </header>
+
+            <div class="content-area">
+                <div class="panel active">
+                    <div class="panel-header">
+                        <h3>Manajemen Buku</h3>
+                        <button id="btn-add-book" class="btn-primary"><i class="fa-solid fa-plus"></i> Tambah
+                            Buku</button>
+                    </div>
+                    <div class="table-container glass-panel">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID Buku</th>
+                                    <th>Judul</th>
+                                    <th>Penulis</th>
+                                    <th>Kategori</th>
+                                    <th>Tersedia/Total</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-book-tbody">
+                                <!-- Books rendered here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Form Buku -->
+    <div id="modal-book-form" class="modal hidden">
+        <div class="modal-content glass-panel">
+            <span class="close-modal">&times;</span>
+            <h2 id="form-book-title">Tambah Buku</h2>
+            <form id="form-book" class="mt-20">
+                <input type="hidden" id="book-id">
+                <div class="form-group">
+                    <label>Judul Buku</label>
+                    <input type="text" id="book-title-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Penulis</label>
+                    <input type="text" id="book-author-input" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>ISBN (Opsional)</label>
+                        <input type="text" id="book-isbn-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Kategori</label>
+                        <select id="book-category-input" required>
+                            <option value="fiksi">Fiksi</option>
+                            <option value="nonfiksi">Non-Fiksi</option>
+                            <option value="sains">Sains</option>
+                            <option value="teknologi">Teknologi</option>
+                            <option value="sejarah">Sejarah</option>
+                            <option value="biografi">Biografi</option>
+                            <option value="agama">Agama</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Total Copy</label>
+                        <input type="number" id="book-copies-input" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>URL Sampul Buku (Opsional)</label>
+                        <input type="url" id="book-cover-input" placeholder="https://example.com/image.jpg">
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary w-full mt-20">Simpan Buku</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="../services/api_service.js"></script>
+    <script src="../services/auth_service.js"></script>
+    <script src="../services/book_service.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = AuthService.requireAuth();
+            if (!user) return;
+            if (user.role !== 'admin') {
+                alert('Akses Ditolak. Anda bukan Admin.');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            document.getElementById('user-name').textContent = user.name;
+            document.getElementById('user-role').textContent = user.role;
+
+            document.getElementById('btn-logout').addEventListener('click', () => {
+                AuthService.logout();
+            });
+
+            document.querySelectorAll('.close-modal').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    btn.closest('.modal').classList.add('hidden');
+                });
+            });
+
+            document.getElementById('btn-add-book').addEventListener('click', () => {
+                document.getElementById('form-book').reset();
+                document.getElementById('book-id').value = '';
+                document.getElementById('form-book-title').textContent = 'Tambah Buku';
+                document.getElementById('modal-book-form').classList.remove('hidden');
+            });
+
+            document.getElementById('form-book').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('book-id').value;
+                const data = {
+                    title: document.getElementById('book-title-input').value,
+                    author: document.getElementById('book-author-input').value,
+                    isbn: document.getElementById('book-isbn-input').value,
+                    category: document.getElementById('book-category-input').value,
+                    totalCopies: parseInt(document.getElementById('book-copies-input').value),
+                    coverImage: document.getElementById('book-cover-input').value
+                };
+
+                try {
+                    if (id) {
+                        await BookService.updateBook(id, data);
+                        showToast('Buku berhasil diupdate', 'success');
+                    } else {
+                        await BookService.addBook(data);
+                        showToast('Buku berhasil ditambahkan', 'success');
+                    }
+                    document.getElementById('modal-book-form').classList.add('hidden');
+                    loadBooks();
+                } catch (error) {
+                    showToast(error.message, 'error');
+                }
+            });
+
+            loadBooks();
+        });
+
+        function showToast(message, type = 'info') {
+            const toastEl = document.getElementById('toast');
+            toastEl.textContent = message;
+            toastEl.className = `toast show ${type}`;
+            setTimeout(() => toastEl.classList.remove('show'), 3000);
+        }
+
+        async function loadBooks() {
+            try {
+                const res = await BookService.getBooks({ limit: 100 });
+                const books = res.data.books;
+                const tbody = document.getElementById('admin-book-tbody');
+                tbody.innerHTML = '';
+
+                books.forEach(book => {
+                    const tr = document.createElement('tr');
+                    const coverHtml = book.coverImage
+                        ? `<img src="${book.coverImage}" alt="cover" style="width: 40px; height: 60px; object-fit: cover; border-radius: 4px; vertical-align: middle; margin-right: 10px;">`
+                        : `<div style="width: 40px; height: 60px; background: rgba(255,255,255,0.1); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; margin-right: 10px;"><i class="fa-solid fa-book"></i></div>`;
+
+                    tr.innerHTML = `
+                        <td style="font-family: monospace; font-size: 0.85em; color: var(--text-muted);">${book._id}</td>
+                        <td>${coverHtml} ${book.title}</td>
+                        <td>${book.author}</td>
+                        <td style="text-transform: capitalize">${book.category}</td>
+                        <td>${book.availableCopies} / ${book.totalCopies}</td>
+                        <td>
+                            <button class="btn-outline btn-edit" data-book='${JSON.stringify(book).replace(/'/g, "&apos;")}'>
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button class="btn-danger btn-delete" data-id="${book._id}">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                document.querySelectorAll('.btn-edit').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const book = JSON.parse(e.currentTarget.getAttribute('data-book'));
+                        document.getElementById('book-id').value = book._id;
+                        document.getElementById('book-title-input').value = book.title;
+                        document.getElementById('book-author-input').value = book.author;
+                        document.getElementById('book-isbn-input').value = book.isbn || '';
+                        document.getElementById('book-category-input').value = book.category;
+                        document.getElementById('book-copies-input').value = book.totalCopies;
+                        document.getElementById('book-cover-input').value = book.coverImage || '';
+                        document.getElementById('form-book-title').textContent = 'Edit Buku';
+                        document.getElementById('modal-book-form').classList.remove('hidden');
+                    });
+                });
+
+                document.querySelectorAll('.btn-delete').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        if (confirm('Yakin ingin menghapus buku ini?')) {
+                            const id = e.currentTarget.getAttribute('data-id');
+                            try {
+                                await BookService.deleteBook(id);
+                                showToast('Buku berhasil dihapus', 'success');
+                                loadBooks();
+                            } catch (error) {
+                                showToast(error.message, 'error');
+                            }
+                        }
+                    });
+                });
+            } catch (error) {
+                showToast('Gagal memuat buku', 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>

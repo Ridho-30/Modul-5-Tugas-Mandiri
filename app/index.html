@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Rizz Library</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="toast" class="toast hidden"></div>
+    <div class="layout-dashboard">
+        <aside class="sidebar glass-panel">
+            <div class="brand">
+                <!-- <i class="fa-solid fa-book-journal-whills"></i> -->
+                <h2>Rizz<span>Library</span></h2>
+            </div>
+            <div class="user-info">
+                <div class="avatar"><i class="fa-solid fa-user-astronaut"></i></div>
+                <div>
+                    <h4 id="user-name">Memuat...</h4>
+                    <span id="user-role" class="badge">member</span>
+                </div>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-target="buku"><i class="fa-solid fa-book"></i> Katalog Buku</a>
+                <a href="#" class="nav-item" data-target="peminjaman"><i class="fa-solid fa-hand-holding-hand"></i>
+                    Peminjaman</a>
+                <a href="book.html" class="nav-item admin-only hidden" id="nav-crud"><i
+                        class="fa-solid fa-boxes-stacked"></i> Kelola Buku</a>
+                <a href="members.html" class="nav-item admin-only hidden" id="nav-members"><i
+                        class="fa-solid fa-users"></i> Kelola Anggota</a>
+                <a href="fines.html" class="nav-item admin-only hidden" id="nav-fines"><i
+                        class="fa-solid fa-file-invoice-dollar"></i> Kelola Denda</a>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="btn-logout" class="btn-outline"><i class="fa-solid fa-right-from-bracket"></i>
+                    Keluar</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <h2 id="page-title">Katalog Buku</h2>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="global-search" placeholder="Cari buku...">
+                </div>
+            </header>
+
+            <div class="content-area">
+                <!-- Katalog Buku -->
+                <div id="panel-buku" class="panel active">
+                    <div class="panel-header">
+                        <h3>Buku Tersedia</h3>
+                        <div class="filters">
+                            <select id="filter-category">
+                                <option value="">Semua Kategori</option>
+                                <option value="fiksi">Fiksi</option>
+                                <option value="nonfiksi">Non-Fiksi</option>
+                                <option value="sains">Sains</option>
+                                <option value="teknologi">Teknologi</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="book-grid" class="grid-container">
+                        <!-- Render Books -->
+                    </div>
+                </div>
+
+                <!-- Peminjaman -->
+                <div id="panel-peminjaman" class="panel hidden">
+                    <div class="panel-header">
+                        <h3>Riwayat Peminjaman</h3>
+                    </div>
+                    <div class="table-container glass-panel">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID Pinjam</th>
+                                    <th>Buku</th>
+                                    <th>Tgl Pinjam</th>
+                                    <th>Jatuh Tempo</th>
+                                    <th>Status</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="loan-tbody">
+                                <!-- Render Loans -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- Modal Book Detail -->
+    <div id="modal-book" class="modal hidden">
+        <div class="modal-content glass-panel">
+            <span class="close-modal">&times;</span>
+            <div class="book-detail">
+                <div class="book-cover-large"><i class="fa-solid fa-book"></i></div>
+                <div class="book-info">
+                    <h2 id="detail-title">Judul Buku</h2>
+                    <p class="author">oleh <span id="detail-author">Penulis</span></p>
+                    <p class="text-muted" style="font-size: 0.8rem; font-family: monospace; margin-bottom: 10px;">ID:
+                        <span id="detail-id"></span>
+                    </p>
+                    <span class="badge" id="detail-category">Kategori</span>
+                    <div class="stock-info mt-20">
+                        <p>Tersedia: <strong id="detail-avail">0</strong> / <span id="detail-total">0</span></p>
+                    </div>
+                    <button id="btn-borrow" class="btn-primary mt-20"><i class="fa-solid fa-hand-holding-hand"></i>
+                        Pinjam Buku</button>
+                    <button id="btn-add-review" class="btn-outline mt-20"><i class="fa-solid fa-star"></i> Beri
+                        Ulasan</button>
+                </div>
+            </div>
+            <div class="reviews-section mt-20">
+                <h3>Ulasan Buku</h3>
+                <div id="reviews-list" style="margin-top: 10px; max-height: 200px; overflow-y: auto;">
+                    <p class="text-muted">Memuat ulasan...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Review -->
+    <div id="modal-review" class="modal hidden">
+        <div class="modal-content glass-panel" style="z-index: 1001;">
+            <span class="close-modal">&times;</span>
+            <h2>Beri Ulasan</h2>
+            <form id="form-review" class="mt-20">
+                <input type="hidden" id="review-book-id">
+                <input type="hidden" id="review-id">
+                <div class="form-group">
+                    <label>Rating (1-5)</label>
+                    <input type="number" id="review-rating" min="1" max="5" required>
+                </div>
+                <div class="form-group">
+                    <label>Komentar</label>
+                    <textarea id="review-comment" rows="4"
+                        style="width: 100%; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: white; border-radius: 8px;"
+                        required></textarea>
+                </div>
+                <button type="submit" class="btn-primary w-full mt-20">Kirim Ulasan</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="../services/api_service.js"></script>
+    <script src="../services/auth_service.js"></script>
+    <script src="../services/book_service.js"></script>
+    <script src="../services/review_service.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = AuthService.requireAuth();
+            if (!user) return;
+            window.currentUser = user;
+
+            // Setup User UI
+            document.getElementById('user-name').textContent = user.name;
+            document.getElementById('user-role').textContent = user.role;
+            if (user.role === 'admin') {
+                document.getElementById('nav-crud').classList.remove('hidden');
+                document.getElementById('nav-members').classList.remove('hidden');
+                document.getElementById('nav-fines').classList.remove('hidden');
+            }
+
+            // Events
+            document.getElementById('btn-logout').addEventListener('click', AuthService.logout);
+
+            // Nav handling
+            document.querySelectorAll('.nav-item').forEach(nav => {
+                nav.addEventListener('click', (e) => {
+                    const target = nav.getAttribute('data-target');
+                    if (!target) return; // For book.html link
+
+                    e.preventDefault();
+                    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                    nav.classList.add('active');
+
+                    document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+                    document.getElementById(`panel-${target}`).classList.remove('hidden');
+
+                    if (target === 'buku') loadBooks();
+                    if (target === 'peminjaman') loadLoans();
+
+                    const titles = { 'buku': 'Katalog Buku', 'peminjaman': 'Riwayat Peminjaman' };
+                    document.getElementById('page-title').textContent = titles[target];
+                });
+            });
+
+            // Modals Close
+            document.querySelectorAll('.close-modal').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    btn.closest('.modal').classList.add('hidden');
+                });
+            });
+
+            // Filters
+            document.getElementById('filter-category').addEventListener('change', loadBooks);
+            document.getElementById('global-search').addEventListener('input', () => {
+                clearTimeout(window.searchTimeout);
+                window.searchTimeout = setTimeout(loadBooks, 500);
+            });
+            // Initial load
+            loadBooks();
+
+            // Review Form
+            document.getElementById('form-review').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const bookId = document.getElementById('review-book-id').value;
+                const reviewId = document.getElementById('review-id').value;
+                const rating = document.getElementById('review-rating').value;
+                const comment = document.getElementById('review-comment').value;
+
+                try {
+                    if (reviewId) {
+                        await ApiService.request(`/reviews/${reviewId}`, { method: 'PUT', body: JSON.stringify({ rating: parseInt(rating), comment }) });
+                        showToast('Ulasan berhasil diperbarui', 'success');
+                    } else {
+                        await ReviewService.addReview(bookId, rating, comment);
+                        showToast('Ulasan berhasil dikirim', 'success');
+                    }
+                    document.getElementById('modal-review').classList.add('hidden');
+                    loadReviews(bookId);
+                    loadBooks(); // refresh rating in catalog
+                } catch (error) {
+                    showToast(error.message, 'error');
+                }
+            });
+        });
+
+        async function openReviewModal(bookId) {
+            document.getElementById('review-book-id').value = bookId;
+            document.getElementById('review-id').value = '';
+            document.getElementById('form-review').reset();
+
+            try {
+                const res = await ReviewService.getReviews(bookId);
+                const userReview = res.data.reviews.find(r =>
+                    r.member === window.currentUser._id ||
+                    (r.member && r.member._id === window.currentUser._id)
+                );
+
+                if (userReview) {
+                    document.getElementById('review-id').value = userReview._id;
+                    document.getElementById('review-rating').value = userReview.rating;
+                    document.getElementById('review-comment').value = userReview.comment;
+                }
+            } catch (e) { console.error(e); }
+
+            document.getElementById('modal-review').classList.remove('hidden');
+        }
+
+        function showToast(message, type = 'info') {
+            const toastEl = document.getElementById('toast');
+            toastEl.textContent = message;
+            toastEl.className = `toast show ${type}`;
+            setTimeout(() => toastEl.classList.remove('show'), 3000);
+        }
+
+        async function loadBooks() {
+            try {
+                const category = document.getElementById('filter-category').value;
+                const search = document.getElementById('global-search').value;
+
+                let params = { limit: 20 };
+                if (category) params.category = category;
+                if (search) params.search = search;
+
+                const res = await BookService.getBooks(params);
+                const grid = document.getElementById('book-grid');
+                grid.innerHTML = '';
+
+                if (res.data.books.length === 0) {
+                    grid.innerHTML = '<p class="text-muted">Tidak ada buku ditemukan.</p>';
+                    return;
+                }
+
+                res.data.books.forEach(book => {
+                    const card = document.createElement('div');
+                    card.className = 'book-card glass-panel';
+                    const coverHtml = book.coverImage
+                        ? `<img src="${book.coverImage}" alt="${book.title}" style="width: 100%; height: 100%; object-fit: cover;">`
+                        : `<i class="fa-solid fa-book"></i>`;
+                    card.innerHTML = `
+                        <div class="book-cover" style="overflow: hidden;">${coverHtml}</div>
+                        <h4>${book.title}</h4>
+                        <p>${book.author}</p>
+                        <div style="margin-bottom: 8px; color: #fbbf24; font-size: 0.85rem;">
+                            <i class="fa-solid fa-star"></i> ${book.rating ? book.rating.toFixed(1) : '0'} (${book.totalReviews || 0})
+                        </div>
+                        <div class="card-footer">
+                            <span class="badge">${book.category}</span>
+                            <span style="font-size: 0.8rem; color: ${book.availableCopies > 0 ? 'var(--success)' : 'var(--danger)'}">
+                                ${book.availableCopies} Tersedia
+                            </span>
+                        </div>
+                    `;
+                    card.addEventListener('click', () => showBookDetail(book));
+                    grid.appendChild(card);
+                });
+            } catch (error) {
+                showToast('Gagal memuat buku', 'error');
+            }
+        }
+
+        function showBookDetail(book) {
+            document.getElementById('detail-title').textContent = book.title;
+            document.getElementById('detail-author').textContent = book.author;
+            document.getElementById('detail-id').textContent = book._id;
+            document.getElementById('detail-category').textContent = book.category;
+            document.getElementById('detail-avail').textContent = book.availableCopies;
+            document.getElementById('detail-total').textContent = book.totalCopies;
+
+            const coverLarge = document.querySelector('.book-cover-large');
+            if (book.coverImage) {
+                coverLarge.innerHTML = `<img src="${book.coverImage}" alt="${book.title}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">`;
+                coverLarge.style.border = 'none';
+                coverLarge.style.background = 'transparent';
+            } else {
+                coverLarge.innerHTML = `<i class="fa-solid fa-book"></i>`;
+                coverLarge.style.border = '';
+                coverLarge.style.background = '';
+            }
+
+            const btnBorrow = document.getElementById('btn-borrow');
+            if (book.availableCopies > 0) {
+                btnBorrow.style.display = 'block';
+                btnBorrow.onclick = async () => {
+                    try {
+                        await ApiService.request('/loans/borrow', { method: 'POST', body: JSON.stringify({ bookId: book._id }) });
+                        showToast('Berhasil meminjam buku', 'success');
+                        document.getElementById('modal-book').classList.add('hidden');
+                        loadBooks();
+                    } catch (error) {
+                        showToast(error.message, 'error');
+                    }
+                };
+            } else {
+                btnBorrow.style.display = 'none';
+            }
+
+            const btnReview = document.getElementById('btn-add-review');
+            if (window.currentUser && window.currentUser.role === 'admin') {
+                btnReview.style.display = 'none';
+            } else {
+                btnReview.style.display = 'inline-block';
+                btnReview.onclick = () => openReviewModal(book._id);
+            }
+
+            document.getElementById('modal-book').classList.remove('hidden');
+            loadReviews(book._id);
+        }
+
+        async function loadReviews(bookId) {
+            const container = document.getElementById('reviews-list');
+            container.innerHTML = '<p class="text-muted">Memuat ulasan...</p>';
+            try {
+                const res = await ReviewService.getReviews(bookId);
+                if (res.data.reviews.length === 0) {
+                    container.innerHTML = '<p class="text-muted">Belum ada ulasan untuk buku ini.</p>';
+                } else {
+                    container.innerHTML = '';
+                    res.data.reviews.forEach(r => {
+                        const div = document.createElement('div');
+                        div.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+                        div.style.paddingBottom = '10px';
+                        div.style.marginBottom = '10px';
+                        div.innerHTML = `
+                            <div style="color: #fbbf24; font-size: 0.8rem; margin-bottom: 4px;">
+                                ${'<i class="fa-solid fa-star"></i>'.repeat(r.rating)}
+                            </div>
+                            <p style="font-size: 0.9rem; margin-bottom: 4px;">${r.comment}</p>
+                        `;
+                        container.appendChild(div);
+                    });
+                }
+            } catch (error) {
+                container.innerHTML = '<p class="text-muted">Gagal memuat ulasan.</p>';
+            }
+        }
+
+        async function loadLoans() {
+            try {
+                const res = await ApiService.request('/loans', { method: 'GET' });
+                const tbody = document.getElementById('loan-tbody');
+                tbody.innerHTML = '';
+
+                if (res.data.loans.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center">Tidak ada data peminjaman</td></tr>';
+                    return;
+                }
+
+                res.data.loans.forEach(loan => {
+                    const tr = document.createElement('tr');
+                    let statusBadge = loan.status === 'borrowed' ? '<span class="badge" style="background: var(--warning)">Dipinjam</span>' :
+                        loan.status === 'returned' ? '<span class="badge" style="background: var(--success)">Kembali</span>' :
+                            '<span class="badge" style="background: var(--danger)">Terlambat</span>';
+
+                    let actions = '-';
+                    if (loan.status === 'borrowed' || loan.status === 'overdue') {
+                        if (window.currentUser.role === 'admin') {
+                            actions = `<button class="btn-outline btn-return" data-id="${loan._id}">Kembalikan</button>`;
+                        } else {
+                            actions = `<span style="font-size: 0.8rem; color: var(--text-muted);">Menunggu Admin</span>`;
+                        }
+                    } else if (loan.status === 'returned') {
+                        if (window.currentUser.role === 'admin') {
+                            actions = '-';
+                        } else {
+                            actions = `<button class="btn-outline btn-review-loan" data-book-id="${loan.book?._id}">Beri Ulasan</button>`;
+                        }
+                    }
+
+                    tr.innerHTML = `
+                        <td>${loan.loanCode}</td>
+                        <td>${loan.book?.title || 'Buku Dihapus'}</td>
+                        <td>${new Date(loan.loanDate).toLocaleDateString()}</td>
+                        <td>${new Date(loan.dueDate).toLocaleDateString()}</td>
+                        <td>${statusBadge}</td>
+                        <td>${actions}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                document.querySelectorAll('.btn-return').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        try {
+                            await ApiService.request(`/loans/${e.currentTarget.getAttribute('data-id')}/return`, { method: 'PUT' });
+                            showToast('Buku berhasil dikembalikan', 'success');
+                            loadLoans();
+                        } catch (error) {
+                            showToast(error.message, 'error');
+                        }
+                    });
+                });
+
+                document.querySelectorAll('.btn-review-loan').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const bookId = e.currentTarget.getAttribute('data-book-id');
+                        if (!bookId || bookId === 'undefined') {
+                            showToast('Buku telah dihapus dari sistem.', 'error');
+                            return;
+                        }
+                        openReviewModal(bookId);
+                    });
+                });
+            } catch (error) {
+                showToast('Gagal memuat peminjaman', 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>

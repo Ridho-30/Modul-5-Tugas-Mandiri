@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kelola Denda - Rizz Library</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="toast" class="toast hidden"></div>
+    <div class="layout-dashboard">
+        <aside class="sidebar glass-panel">
+            <div class="brand">
+                <h2>Rizz<span>Library</span></h2>
+            </div>
+            <div class="user-info">
+                <div class="avatar"><i class="fa-solid fa-user-astronaut"></i></div>
+                <div>
+                    <h4 id="user-name">Memuat...</h4>
+                    <span id="user-role" class="badge">admin</span>
+                </div>
+            </div>
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i> Dashboard Utama</a>
+                <a href="crud.html" class="nav-item admin-only"><i class="fa-solid fa-boxes-stacked"></i> Kelola
+                    Buku</a>
+                <a href="members.html" class="nav-item admin-only"><i class="fa-solid fa-users"></i> Kelola Anggota</a>
+                <a href="fines.html" class="nav-item active admin-only"><i class="fa-solid fa-file-invoice-dollar"></i>
+                    Kelola Denda</a>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="btn-logout" class="btn-outline"><i class="fa-solid fa-right-from-bracket"></i>
+                    Keluar</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <h2>Kelola Denda</h2>
+            </header>
+
+            <div class="content-area">
+                <div class="panel active">
+                    <div class="panel-header">
+                        <h3>Semua Denda Anggota</h3>
+                    </div>
+                    <div class="stats-cards">
+                        <div class="card glass-panel">
+                            <h4>Total Denda Belum Dibayar (Keseluruhan)</h4>
+                            <h2 id="total-unpaid-fine">Rp 0</h2>
+                        </div>
+                    </div>
+                    <div class="table-container glass-panel mt-20">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Kode Denda</th>
+                                    <th>Anggota</th>
+                                    <th>Alasan</th>
+                                    <th>Jumlah</th>
+                                    <th>Status</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fine-tbody">
+                                <!-- Render Fines here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Pay Fine -->
+    <div id="modal-pay-fine" class="modal hidden">
+        <div class="modal-content glass-panel">
+            <span class="close-modal">&times;</span>
+            <h2>Konfirmasi Pembayaran Denda</h2>
+            <p>Total Denda: <strong id="pay-amount">Rp 0</strong></p>
+            <form id="form-pay-fine" class="mt-20">
+                <input type="hidden" id="pay-fine-id">
+                <div class="form-group">
+                    <label>Metode Pembayaran</label>
+                    <select id="pay-method" required>
+                        <option value="tunai">Tunai (Kasir)</option>
+                        <option value="transfer">Transfer Bank</option>
+                        <option value="lainnya">Lainnya</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary w-full mt-20">Tandai Lunas</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="../services/api_service.js"></script>
+    <script src="../services/auth_service.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = AuthService.requireAuth();
+            if (!user) return;
+            if (user.role !== 'admin') {
+                alert('Akses Ditolak. Anda bukan Admin.');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            document.getElementById('user-name').textContent = user.name;
+            document.getElementById('user-role').textContent = user.role;
+
+            document.getElementById('btn-logout').addEventListener('click', AuthService.logout);
+
+            document.querySelectorAll('.close-modal').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    btn.closest('.modal').classList.add('hidden');
+                });
+            });
+
+            document.getElementById('form-pay-fine').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('pay-fine-id').value;
+                const method = document.getElementById('pay-method').value;
+
+                try {
+                    await ApiService.request(`/fines/${id}/pay`, { method: 'PUT', body: JSON.stringify({ paymentMethod: method }) });
+                    showToast('Denda berhasil ditandai lunas', 'success');
+                    document.getElementById('modal-pay-fine').classList.add('hidden');
+                    loadFines();
+                } catch (error) {
+                    showToast(error.message, 'error');
+                }
+            });
+
+            loadFines();
+        });
+
+        function showToast(message, type = 'info') {
+            const toastEl = document.getElementById('toast');
+            toastEl.textContent = message;
+            toastEl.className = `toast show ${type}`;
+            setTimeout(() => toastEl.classList.remove('show'), 3000);
+        }
+
+        async function loadFines() {
+            try {
+                // Fetch fines. Assumption: As an admin, this endpoint might return all fines or maybe /fines/all.
+                // Depending on the backend, usually /fines returns all if the requester is an admin.
+                const res = await ApiService.request('/fines', { method: 'GET' });
+                const tbody = document.getElementById('fine-tbody');
+                tbody.innerHTML = '';
+
+                let totalUnpaid = 0;
+                if (!res.data.fines || res.data.fines.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center">Tidak ada data denda</td></tr>';
+                } else {
+                    res.data.fines.forEach(fine => {
+                        if (fine.status === 'unpaid') totalUnpaid += fine.amount;
+                        const tr = document.createElement('tr');
+                        const statusBadge = fine.status === 'unpaid'
+                            ? '<span class="badge" style="background: var(--danger)">Belum Lunas</span>'
+                            : '<span class="badge" style="background: var(--success)">Lunas</span>';
+
+                        const memberInfo = fine.member ? `${fine.member.name} (${fine.member.memberCode})` : 'Anggota Dihapus';
+
+                        tr.innerHTML = `
+                            <td>${fine.fineCode}</td>
+                            <td>${memberInfo}</td>
+                            <td style="text-transform: capitalize">${fine.reason}</td>
+                            <td>Rp ${fine.amount.toLocaleString('id-ID')}</td>
+                            <td>${statusBadge}</td>
+                            <td>
+                                ${fine.status === 'unpaid' ?
+                                `<button class="btn-primary btn-pay" data-id="${fine._id}" data-amount="${fine.amount}">Proses</button>` : '-'}
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+                document.getElementById('total-unpaid-fine').textContent = `Rp ${totalUnpaid.toLocaleString('id-ID')}`;
+
+                document.querySelectorAll('.btn-pay').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.getElementById('pay-fine-id').value = e.target.getAttribute('data-id');
+                        document.getElementById('pay-amount').textContent = `Rp ${parseInt(e.target.getAttribute('data-amount')).toLocaleString('id-ID')}`;
+                        document.getElementById('modal-pay-fine').classList.remove('hidden');
+                    });
+                });
+            } catch (error) {
+                showToast('Gagal memuat denda. Pastikan API mendukung ini untuk admin.', 'error');
+            }
+        }
+    </script>
+</body>
+
+</html>

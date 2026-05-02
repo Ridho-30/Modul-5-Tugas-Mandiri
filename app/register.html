@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftar - Rizz Library</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="toast" class="toast hidden"></div>
+    <div id="auth-view">
+        <div class="auth-box glass-panel">
+            <div class="brand">
+                <i class="fa-solid fa-book-journal-whills"></i>
+                <h1>Rizz <span>Library</span></h1>
+            </div>
+
+            <div class="auth-tabs">
+                <button onclick="window.location.href='login.html'">Masuk</button>
+                <button class="active">Daftar</button>
+            </div>
+
+            <form id="register-form" class="auth-form active">
+                <div class="input-group">
+                    <i class="fa-solid fa-user"></i>
+                    <input type="text" id="reg-name" placeholder="Nama Lengkap" required>
+                </div>
+                <div class="input-group">
+                    <i class="fa-solid fa-envelope"></i>
+                    <input type="email" id="reg-email" placeholder="Email" required>
+                </div>
+                <div class="input-group">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" id="reg-password" placeholder="Password (Min 6)" required minlength="6">
+                </div>
+                <div class="input-group">
+                    <i class="fa-solid fa-phone"></i>
+                    <input type="tel" id="reg-phone" placeholder="Nomor Telepon">
+                </div>
+                <button type="submit" class="btn-primary">Daftar <i class="fa-solid fa-user-plus"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../services/api_service.js"></script>
+    <script src="../services/auth_service.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            AuthService.redirectIfAuth();
+        });
+
+        function showToast(message, type = 'info') {
+            const toastEl = document.getElementById('toast');
+            toastEl.textContent = message;
+            toastEl.className = `toast show ${type}`;
+            setTimeout(() => {
+                toastEl.classList.remove('show');
+            }, 3000);
+        }
+
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('reg-name').value,
+                email: document.getElementById('reg-email').value,
+                password: document.getElementById('reg-password').value,
+                phone: document.getElementById('reg-phone').value,
+                address: 'Belum diisi'
+            };
+
+            try {
+                await AuthService.register(data);
+                alert('Registrasi berhasil, silakan login');
+                window.location.href = 'login.html';
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        });
+    </script>
+</body>
+
+</html>
